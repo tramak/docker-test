@@ -2,15 +2,16 @@
  * Цепочка вызовов
  */
 interface IMiddleware {
+  nextMiddleware: IMiddleware | undefined;
   next(item: IMiddleware): IMiddleware;
   handle(request: any): any;
 }
 
 abstract class AbstractMiddleware implements IMiddleware {
-  private nextMiddleware: IMiddleware | undefined;
+  public nextMiddleware: IMiddleware | undefined;
   next(mid: IMiddleware): IMiddleware {
-    this.nextMiddleware = mid;
-    return this.nextMiddleware;
+    mid.nextMiddleware = this;
+    return mid;
   }
   handle(request: any) {
     if (this.nextMiddleware) {
@@ -23,18 +24,20 @@ abstract class AbstractMiddleware implements IMiddleware {
 
 class AuthMiddleware extends AbstractMiddleware {
   override handle(request: any): any {
+    console.log('AuthMiddleware');
     if (request.userId === 1) {
       return super.handle(request);
     }
 
     return {
-      error: 'Вы не оавторизованны'
+      error: 'Вы не авторизованны'
     }
   }
 }
 
 class ValidateMiddleware extends AbstractMiddleware {
   override handle(request: any): any {
+    console.log('ValidateMiddleware');
     if (request.body) {
       return super.handle(request);
     }
@@ -47,6 +50,7 @@ class ValidateMiddleware extends AbstractMiddleware {
 
 class Controller extends AbstractMiddleware {
   override handle(request: any): any {
+    console.log('Controller');
     return {
       success: request,
     }
@@ -59,7 +63,7 @@ const validate = new ValidateMiddleware()
 const auth = new AuthMiddleware();
 
 console.log(
-  validate.next(auth).next(controller).handle({
+  controller.next(auth).next(validate).handle({
     userId: 1,
     body: 'test22'
   })
